@@ -266,3 +266,269 @@ static RobotData to_robot_data(BridgeSnapshot snapshot) {
 
     return data;
 }
+// ==============================================
+// SQLITE
+// ==============================================
+
+static int init_db(void) {
+    int rc;
+    char *err_msg = NULL;
+    const char *sql =
+        "CREATE TABLE IF NOT EXISTS lectures("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "timestamp TEXT NOT NULL,"
+        "raw_hand INTEGER,"
+        "angle_hand REAL,"
+        "acc_hand REAL,"
+        "pos_hand_x REAL,"
+        "pos_hand_y REAL,"
+        "err_hand INTEGER)";
+
+    if (db != NULL) {
+        return 0;
+    }
+
+    rc = sqlite3_open("robot.db", &db);
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "[DB Error] %s\n", sqlite3_errmsg(db));
+        if (db != NULL) {
+            sqlite3_close(db);
+            db = NULL;
+        }
+        return -1;
+    }
+
+    rc = sqlite3_exec(db, sql, 0, 0, &err_msg);
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "[DB Error] %s\n", err_msg);
+        sqlite3_free(err_msg);
+        sqlite3_close(db);
+        db = NULL;
+        return -1;
+    }
+
+    return 0;
+}
+
+static int insert_lecture(int raw, double angle, double acc, double x, double y, int err,
+                          sqlite3_int64 *row_id, char *timestamp_out, size_t timestamp_size) {
+    sqlite3_stmt *stmt = NULL;
+    const char *sql =
+        "INSERT INTO lectures "
+        "(timestamp, raw_hand, angle_hand, acc_hand, pos_hand_x, pos_hand_y, err_hand) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)";
+    char timestamp[DB_TIMESTAMP_SIZE];
+    int rc;
+
+    if (ensure_bridge_ready() != 0) {
+        return -1;
+    }
+
+    make_timestamp(timestamp, sizeof(timestamp));
+
+    rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "[DB Error] %s\n", sqlite3_errmsg(db));
+        return -1;
+    }
+
+    sqlite3_bind_text(stmt, 1, timestamp, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt, 2, raw);
+    sqlite3_bind_double(stmt, 3, angle);
+    sqlite3_bind_double(stmt, 4, acc);
+    sqlite3_bind_double(stmt, 5, x);
+    sqlite3_bind_double(stmt, 6, y);
+    sqlite3_bind_int(stmt, 7, err);
+
+    rc = sqlite3_step(stmt);
+    if (rc != SQLITE_DONE) {
+        fprintf(stderr, "[DB Error] %s\n", sqlite3_errmsg(db));
+        sqlite3_finalize(stmt);
+        return -1;
+    }
+
+    if (row_id != NULL) {
+        *row_id = sqlite3_last_insert_rowid(db);
+    }
+
+    if (timestamp_out != NULL && timestamp_size > 0) {
+        clear_timestamp(timestamp_out, timestamp_size);
+        strncpy(timestamp_out, timestamp, timestamp_size - 1);
+    }
+
+    sqlite3_finalize(stmt);
+    return 0;
+}
+
+int sauvegarder_dans_sqlite(int raw, double angle, double acc, double x, double y, int err) {
+    sqlite3_int64 row_id = -1;
+    char timestamp[DB_TIMESTAMP_SIZE];
+
+    if (insert_lecture(raw, angle, acc, x, y, err, &row_id, timestamp, sizeof(timestamp)) != 0) {
+        return -1;
+    }
+
+    printf("[DB SAVED] ID=%d | Position=(%.0f,%.0f) | Angle=%.1f | Raw=%d | Acc=%.2f | Error=%d\n",
+           (int)row_id, x, y, angle, raw, acc, err);
+
+    return (int)row_id;
+}
+
+void afficher_base_donnees(void) {
+    sqlite3_stmt *stmt = NULL;
+    const char *sql =
+        "SELECT id, timestamp, raw_hand, angle_hand, acc_hand, pos_hand_x, pos_hand_y, err_hand "
+        "FROM lectures ORDER BY id DESC LIMIT 10";
+    int rc;
+
+    if (ensure_bridge_ready() != 0) {
+        printf("[DB] Database not initialized\n");
+        return;
+    }
+
+    rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        printf("[DB Error] %s\n", sqlite3_errmsg(db));
+        return;
+    }
+
+    printf("\n");
+    printf("+----+---------------------+------+----------+----------+----------+----------+-------+\n");
+    printf("| ID | Timestamp           | Raw  | Angle    | Acc      | Pos X    | Pos Y    | Error |\n");
+    printf("+----+---------------------+------+----------+----------+----------+----------+-------+\n");
+
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        int id = sqlite3_column_int(stmt, 0);
+        const char *timestamp = (const char *)sqlite3_column_text(stmt, 1);
+        int raw = sqlite3_column_int(stmt, 2);
+        double angle = sqlite3_column_double(stmt, 3);
+        double acc = sqlite3_column_double(stmt, 4);
+        double pos_x = sqlite3_column_double(stmt, 5);
+        double pos_y = sqlite3_column_double(stmt, 6);
+        int err = sqlite3_column_int(stmt, 7);
+        const char *err_str = (err == OK) ? "OK" : (err == UNDER) ? "UNDER" : "OVER";
+
+        printf("| %2d | %s | %4d | %8.1f | %8.2f | %8.0f | %8.0f | %5s |\n",
+               id, timestamp, raw, angle, acc, pos_x, pos_y, err_str);
+    }
+
+    printf("+----+---------------------+------+----------+----------+----------+----------+-------+\n\n");
+    sqlite3_finalize(stmt);
+}
+
+void exporter_csv(void) {
+    sqlite3_stmt *stmt = NULL;
+    const char *sql =
+        "SELECT id, timestamp, raw_hand, angle_hand, acc_hand, pos_hand_x, pos_hand_y, err_hand "
+        "FROM lectures ORDER BY id";
+    char filename[100];
+    time_t now = time(NULL);
+    struct tm *time_info = localtime(&now);
+    FILE *file;
+    int rc;
+
+    if (ensure_bridge_ready() != 0) {
+        printf("[DB] Database not initialized\n");
+        return;
+    }
+
+    if (time_info == NULL) {
+        printf("[ERROR] Cannot create CSV timestamp\n");
+        return;
+    }
+
+    sprintf(filename, "robot_export_%04d%02d%02d_%02d%02d%02d.csv",
+            time_info->tm_year + 1900, time_info->tm_mon + 1, time_info->tm_mday,
+            time_info->tm_hour, time_info->tm_min, time_info->tm_sec);
+
+    file = fopen(filename, "w");
+    if (file == NULL) {
+        printf("[ERROR] Cannot create CSV file\n");
+        return;
+    }
+
+    fprintf(file, "ID,Timestamp,Raw,Angle(deg),Acceleration,PosX,PosY,Error\n");
+
+    rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if (rc == SQLITE_OK) {
+        while (sqlite3_step(stmt) == SQLITE_ROW) {
+            int err = sqlite3_column_int(stmt, 7);
+            const char *err_str = (err == OK) ? "OK" : (err == UNDER) ? "UNDER" : "OVER";
+
+            fprintf(file, "%d,%s,%d,%.2f,%.2f,%.0f,%.0f,%s\n",
+                    sqlite3_column_int(stmt, 0),
+                    sqlite3_column_text(stmt, 1),
+                    sqlite3_column_int(stmt, 2),
+                    sqlite3_column_double(stmt, 3),
+                    sqlite3_column_double(stmt, 4),
+                    sqlite3_column_double(stmt, 5),
+                    sqlite3_column_double(stmt, 6),
+                    err_str);
+        }
+        sqlite3_finalize(stmt);
+    }
+
+    fclose(file);
+    printf("[EXPORT] Data exported to: %s\n", filename);
+}
+
+API int clear_all_data_no_prompt(void) {
+    char *err_msg = NULL;
+    int rc;
+
+    if (ensure_bridge_ready() != 0) {
+        return -1;
+    }
+
+    rc = sqlite3_exec(db, "DELETE FROM lectures", 0, 0, &err_msg);
+    if (rc != SQLITE_OK) {
+        printf("[DB Error] %s\n", err_msg);
+        sqlite3_free(err_msg);
+        return -1;
+    }
+
+    sqlite3_exec(db, "DELETE FROM sqlite_sequence WHERE name='lectures'", 0, 0, 0);
+    return 0;
+}
+
+void supprimer_toutes_donnees(void) {
+    char confirmation;
+
+    printf("[WARNING] Delete ALL data from database? (y/N): ");
+    scanf(" %c", &confirmation);
+    getchar();
+
+    if (confirmation == 'y' || confirmation == 'Y') {
+        if (clear_all_data_no_prompt() == 0) {
+            printf("[DB] All data deleted\n");
+        }
+    } else {
+        printf("[CANCELLED] Deletion cancelled\n");
+    }
+}
+
+API int get_record_count(void) {
+    sqlite3_stmt *stmt = NULL;
+    int count = -1;
+
+    if (ensure_bridge_ready() != 0) {
+        return -1;
+    }
+
+    if (sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM lectures", -1, &stmt, NULL) == SQLITE_OK) {
+        if (sqlite3_step(stmt) == SQLITE_ROW) {
+            count = sqlite3_column_int(stmt, 0);
+        }
+        sqlite3_finalize(stmt);
+    }
+
+    return count;
+}
+
+void fermer_db(void) {
+    if (db != NULL) {
+        sqlite3_close(db);
+        db = NULL;
+    }
+    db_initialized = 0;
+}

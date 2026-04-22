@@ -735,3 +735,61 @@ void afficher_menu_test(void) {
     printf("========================================\n");
     printf("Your choice: ");
 }
+
+// ==============================================
+// MAIN FUNCTION - FOR CONSOLE TESTING
+// ==============================================
+
+int main(void) {
+    int choix;
+
+    printf("\n");
+    printf("========================================\n");
+    printf("     C BRIDGE - SQLite DATABASE + JAVA  \n");
+    printf("========================================\n");
+    printf("Role of C:\n");
+    printf(" 1. Generate data (angle, raw, acceleration)\n");
+    printf(" 2. Save to SQLite database (robot.db)\n");
+    printf(" 3. Send to Java for display (via JNA)\n");
+    printf("\nThis MAIN is for testing the C bridge\n");
+    printf("In production, Java will call the exported snapshot APIs\n");
+    printf("========================================\n");
+
+    if (initialize_bridge() != 0) {
+        printf("[ERROR] Database initialization failed\n");
+        return 1;
+    }
+
+    do {
+        afficher_menu_test();
+        scanf("%d", &choix);
+        getchar();
+
+        switch (choix) {
+        case 1:
+            test_bridge_simulation();
+            break;
+        case 2:
+            test_bridge_manuel();
+            break;
+        case 3:
+            afficher_base_donnees();
+            break;
+        case 4:
+            exporter_csv();
+            break;
+        case 5:
+            supprimer_toutes_donnees();
+            break;
+        case 0:
+            printf("\n[INFO] Goodbye!\n");
+            break;
+        default:
+            printf("[ERROR] Invalid choice!\n");
+        }
+    } while (choix != 0);
+
+    close_bridge();
+    return 0;
+}
+

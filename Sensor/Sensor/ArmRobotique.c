@@ -532,3 +532,206 @@ void fermer_db(void) {
     }
     db_initialized = 0;
 }
+
+// ==============================================
+// EXPORTED BRIDGE API FOR JAVA
+// ==============================================
+
+API int initialize_bridge(void) {
+    return ensure_bridge_ready();
+}
+
+API void close_bridge(void) {
+    fermer_db();
+}
+
+API BridgeSnapshot get_current_snapshot(void) {
+    BridgeSnapshot snapshot = snapshot_from_coordinates(current_x, current_y, 0.0);
+
+    if (ensure_bridge_ready() != 0) {
+        snapshot.db_status = DB_STATUS_ERROR;
+    }
+
+    return snapshot;
+}
+
+API BridgeSnapshot set_coordinates_snapshot(double x, double y) {
+    BridgeSnapshot snapshot;
+    sqlite3_int64 row_id = -1;
+    char timestamp[DB_TIMESTAMP_SIZE];
+
+    current_x = x;
+    current_y = y;
+    snapshot = snapshot_from_coordinates(current_x, current_y, 0.0);
+
+    if (insert_lecture(snapshot.raw_hand, snapshot.angle_hand, snapshot.acc_hand,
+                       snapshot.hand_x, snapshot.hand_y, snapshot.err_hand,
+                       &row_id, timestamp, sizeof(timestamp)) == 0) {
+        set_db_result(&snapshot, DB_STATUS_SAVED, row_id, timestamp);
+    } else {
+        set_db_result(&snapshot, DB_STATUS_ERROR, -1, NULL);
+    }
+
+    return snapshot;
+}
+
+API BridgeSnapshot move_point_snapshot(double dx, double dy) {
+    return set_coordinates_snapshot(current_x + dx, current_y + dy);
+}
+
+API BridgeSnapshot generate_random_snapshot(void) {
+    BridgeSnapshot snapshot = snapshot_from_random();
+    sqlite3_int64 row_id = -1;
+    char timestamp[DB_TIMESTAMP_SIZE];
+
+    if (snapshot.err_hand == OK) {
+        current_x = snapshot.hand_x;
+        current_y = snapshot.hand_y;
+    }
+
+    if (insert_lecture(snapshot.raw_hand, snapshot.angle_hand, snapshot.acc_hand,
+                       snapshot.hand_x, snapshot.hand_y, snapshot.err_hand,
+                       &row_id, timestamp, sizeof(timestamp)) == 0) {
+        set_db_result(&snapshot, DB_STATUS_SAVED, row_id, timestamp);
+    } else {
+        set_db_result(&snapshot, DB_STATUS_ERROR, -1, NULL);
+    }
+
+    return snapshot;
+}
+
+// ==============================================
+// COMPATIBILITY API
+// ==============================================
+
+API RobotData get_current_data(void) {
+    return to_robot_data(generate_random_snapshot());
+}
+
+API void set_coordinates(double x, double y) {
+    (void)set_coordinates_snapshot(x, y);
+}
+
+API void move_point(double dx, double dy) {
+    (void)move_point_snapshot(dx, dy);
+}
+
+API double get_current_x(void) {
+    return current_x;
+}
+
+API double get_current_y(void) {
+    return current_y;
+}
+
+API void get_random_position(double *x, double *y) {
+    BridgeSnapshot snapshot = generate_random_snapshot();
+
+    if (x != NULL) {
+        *x = snapshot.hand_x;
+    }
+    if (y != NULL) {
+        *y = snapshot.hand_y;
+    }
+}
+
+API RobotData get_random_data(void) {
+    return to_robot_data(generate_random_snapshot());
+}
+
+API RobotData get_data_from_coordinates(double x, double y) {
+    return to_robot_data(set_coordinates_snapshot(x, y));
+}
+
+// ==============================================
+// TEST FUNCTIONS
+// ==============================================
+
+void test_bridge_simulation(void) {
+    int i;
+
+    printf("\n");
+    printf("========================================\n");
+    printf("  TEST 1: SIMULATION MODE (Bridge C)\n");
+    printf("  C -> SQLite -> (pret pour Java)\n");
+    printf("========================================\n\n");
+
+    for (i = 0; i < 5; i++) {
+        BridgeSnapshot snapshot = generate_random_snapshot();
+
+        printf("--- Iteration %d ---\n", i + 1);
+        printf("Result: Angle=%.1f, Position=(%.0f,%.0f), Raw=%d, Acc=%.2f, Error=%d, DB=%d, Row=%d\n",
+               snapshot.angle_hand, snapshot.hand_x, snapshot.hand_y, snapshot.raw_hand,
+               snapshot.acc_hand, snapshot.err_hand, snapshot.db_status, snapshot.db_row_id);
+    }
+}
+
+void test_bridge_manuel(void) {
+    char commande;
+
+    printf("\n");
+    printf("========================================\n");
+    printf("  TEST 2: MANUAL MODE (Bridge C)\n");
+    printf("  C -> SQLite -> (pret pour Java)\n");
+    printf("========================================\n");
+    printf("Commands:\n");
+    printf("  Z: Up    S: Down    Q: Left    D: Right\n");
+    printf("  R: Reset  V: View DB  0: Exit\n\n");
+
+    (void)set_coordinates_snapshot(OFFSET_X, OFFSET_Y);
+
+    while (1) {
+        printf("\rPosition: (%.0f, %.0f) | Command: ", current_x, current_y);
+
+        commande = getchar();
+        getchar();
+
+        if (commande == '0') {
+            break;
+        }
+
+        switch (commande) {
+            case 'z':
+            case 'Z':
+                (void)move_point_snapshot(0, 10);
+                break;
+            case 's':
+            case 'S':
+                (void)move_point_snapshot(0, -10);
+                break;
+            case 'q':
+            case 'Q':
+                (void)move_point_snapshot(-10, 0);
+                break;
+            case 'd':
+            case 'D':
+                (void)move_point_snapshot(10, 0);
+                break;
+            case 'r':
+            case 'R':
+                (void)set_coordinates_snapshot(OFFSET_X, OFFSET_Y);
+                break;
+            case 'v':
+            case 'V':
+                afficher_base_donnees();
+                break;
+            default:
+                printf("\nInvalid command! (Z/S/Q/D/R/V/0)\n");
+        }
+    }
+}
+
+void afficher_menu_test(void) {
+    printf("\n");
+    printf("========================================\n");
+    printf("     C BRIDGE - SQLite + Java Ready\n");
+    printf("========================================\n");
+    printf("  1. Test Simulation Mode (5 lectures)\n");
+    printf("  2. Test Manual Mode (Interactive)\n");
+    printf("  3. View Database (Last 10 records)\n");
+    printf("  4. Export to CSV\n");
+    printf("  5. Delete All Data\n");
+    printf("  0. Exit\n");
+    printf("========================================\n");
+    printf("Your choice: ");
+}

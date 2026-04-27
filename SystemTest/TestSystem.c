@@ -5,3 +5,7 @@ TEST_ASSERT_DOUBLE_EQ(MAX_ANGLE, result, 0.001);
 int mid_raw = (MIN_RAW + MAX_RAW) / 2;
 double result = calibrer(mid_raw);
 TEST_ASSERT_DOUBLE_EQ(0.0, result, 0.5);
+double result_below = calibrer(MIN_RAW - 100);
+double result_above = calibrer(MAX_RAW + 100);
+TEST_ASSERT_DOUBLE_EQ(0.0, result_below, 0.001);
+TEST_ASSERT_DOUBLE_EQ(0.0, result_above, 0.001);

@@ -49,3 +49,7 @@ double x = OFFSET_X + L_HAND - 0.1;
 double y = OFFSET_Y;
 int result = detecter_erreur_position(x, y);
 TEST_ASSERT_INT_EQ(OK, result);
+double x = OFFSET_X + L_HAND + 1.0;
+double y = OFFSET_Y;
+int result = detecter_erreur_position(x, y);
+TEST_ASSERT_INT_EQ(OVER, result);

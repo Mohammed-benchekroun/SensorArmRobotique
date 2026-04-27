@@ -17,3 +17,5 @@ double x, y;
 calculer_position(90.0, &x, &y);
 TEST_ASSERT_DOUBLE_EQ(OFFSET_X, x, 0.001);
 TEST_ASSERT_DOUBLE_EQ(OFFSET_Y + L_HAND, y, 0.001);
+double angle = calculer_angle(OFFSET_X + L_HAND, OFFSET_Y);
+TEST_ASSERT_DOUBLE_EQ(0.0, angle, 0.001);

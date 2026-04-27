@@ -53,3 +53,6 @@ double x = OFFSET_X + L_HAND + 1.0;
 double y = OFFSET_Y;
 int result = detecter_erreur_position(x, y);
 TEST_ASSERT_INT_EQ(OVER, result);
+fermer_db();
+int result = init_db();
+TEST_ASSERT_INT_EQ(0, result);

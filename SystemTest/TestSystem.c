@@ -43,3 +43,5 @@ int result = detecter_erreur(MIN_RAW - 1);
 TEST_ASSERT_INT_EQ(UNDER, result);
 int result = detecter_erreur(MAX_RAW + 1);
 TEST_ASSERT_INT_EQ(OVER, result);
+int result = detecter_erreur(2048);
+TEST_ASSERT_INT_EQ(OK, result);

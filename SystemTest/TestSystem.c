@@ -39,3 +39,5 @@ for (int i = 0; i < 7; i++) {
     int computed_raw = raw_from_angle(angle);
     TEST_ASSERT_INT_EQ(original_raw, computed_raw);
 }
+int result = detecter_erreur(MIN_RAW - 1);
+TEST_ASSERT_INT_EQ(UNDER, result);

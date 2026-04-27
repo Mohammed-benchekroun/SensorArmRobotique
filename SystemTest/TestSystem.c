@@ -32,3 +32,10 @@ for (int i = 0; i < 9; i++) {
     }
     TEST_ASSERT_DOUBLE_EQ(original_angle, computed_angle, 0.01);
 }
+int test_raws[] = { 0, 500, 1000, 2048, 3000, 3500, 4095 };
+for (int i = 0; i < 7; i++) {
+    int original_raw = test_raws[i];
+    double angle = calibrer(original_raw);
+    int computed_raw = raw_from_angle(angle);
+    TEST_ASSERT_INT_EQ(original_raw, computed_raw);
+}

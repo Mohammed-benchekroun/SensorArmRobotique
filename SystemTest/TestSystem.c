@@ -62,3 +62,7 @@ int result = insert_lecture(2048, 0.0, 0.5, OFFSET_X + 40, OFFSET_Y, OK, &row_id
 TEST_ASSERT_INT_EQ(0, result);
 TEST_ASSERT(row_id > 0);
 TEST_ASSERT(strlen(timestamp) > 0);
+int count_before = get_record_count();
+insert_lecture(1024, 45.0, 0.3, OFFSET_X + 30, OFFSET_Y + 30, OK, NULL, NULL, 0);
+int count_after = get_record_count();
+TEST_ASSERT_INT_EQ(count_before + 1, count_after);

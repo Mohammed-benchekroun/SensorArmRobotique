@@ -92,4 +92,4 @@ move_point_snapshot(5, -10);
 double x2 = get_current_x();
 double y2 = get_current_y();
 TEST_ASSERT_DOUBLE_EQ(OFFSET_X + 15, x2, 0.001);
-TEST_ASSERT_DOUBLE_EQ(OFFSET_Y + 10, y2, 0.001);
+TEST_ASSERT_DOUBLE_EQ(OFFSET_Y + 10, y2, 0.001); 

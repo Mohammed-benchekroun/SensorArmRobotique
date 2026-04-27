@@ -19,3 +19,16 @@ TEST_ASSERT_DOUBLE_EQ(OFFSET_X, x, 0.001);
 TEST_ASSERT_DOUBLE_EQ(OFFSET_Y + L_HAND, y, 0.001);
 double angle = calculer_angle(OFFSET_X + L_HAND, OFFSET_Y);
 TEST_ASSERT_DOUBLE_EQ(0.0, angle, 0.001);
+double test_angles[] = { -180, -135, -90, -45, 0, 45, 90, 135, 180 };
+for (int i = 0; i < 9; i++) {
+    double original_angle = test_angles[i];
+    double x, y;
+    calculer_position(original_angle, &x, &y);
+    double computed_angle = calculer_angle(x, y);
+
+    // Special case: -180 and 180 are equivalent
+    if (fabs(original_angle) == 180.0 && fabs(computed_angle) == 180.0) {
+        continue;
+    }
+    TEST_ASSERT_DOUBLE_EQ(original_angle, computed_angle, 0.01);
+}

@@ -41,3 +41,5 @@ for (int i = 0; i < 7; i++) {
 }
 int result = detecter_erreur(MIN_RAW - 1);
 TEST_ASSERT_INT_EQ(UNDER, result);
+int result = detecter_erreur(MAX_RAW + 1);
+TEST_ASSERT_INT_EQ(OVER, result);

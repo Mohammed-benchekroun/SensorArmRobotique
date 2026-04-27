@@ -9,3 +9,7 @@ double result_below = calibrer(MIN_RAW - 100);
 double result_above = calibrer(MAX_RAW + 100);
 TEST_ASSERT_DOUBLE_EQ(0.0, result_below, 0.001);
 TEST_ASSERT_DOUBLE_EQ(0.0, result_above, 0.001);
+double x, y;
+calculer_position(0.0, &x, &y);
+TEST_ASSERT_DOUBLE_EQ(OFFSET_X + L_HAND, x, 0.001);
+TEST_ASSERT_DOUBLE_EQ(OFFSET_Y, y, 0.001);

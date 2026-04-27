@@ -13,3 +13,7 @@ double x, y;
 calculer_position(0.0, &x, &y);
 TEST_ASSERT_DOUBLE_EQ(OFFSET_X + L_HAND, x, 0.001);
 TEST_ASSERT_DOUBLE_EQ(OFFSET_Y, y, 0.001);
+double x, y;
+calculer_position(90.0, &x, &y);
+TEST_ASSERT_DOUBLE_EQ(OFFSET_X, x, 0.001);
+TEST_ASSERT_DOUBLE_EQ(OFFSET_Y + L_HAND, y, 0.001);

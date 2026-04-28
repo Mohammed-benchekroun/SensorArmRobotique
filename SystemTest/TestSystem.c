@@ -101,3 +101,7 @@ if (snapshot.err_hand == OK) {
     TEST_ASSERT(fabs(get_current_x() - old_x) > 0.001 ||
         fabs(get_current_y() - old_y) > 0.001);
 }
+double x, y;
+calculer_position(MIN_ANGLE, &x, &y);
+TEST_ASSERT_DOUBLE_EQ(OFFSET_X - L_HAND, x, 0.001);
+TEST_ASSERT_DOUBLE_EQ(OFFSET_Y, y, 0.001);

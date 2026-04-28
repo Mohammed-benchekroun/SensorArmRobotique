@@ -109,3 +109,6 @@ double x, y;
 calculer_position(MAX_ANGLE, &x, &y);
 TEST_ASSERT_DOUBLE_EQ(OFFSET_X - L_HAND, x, 0.001);
 TEST_ASSERT_DOUBLE_EQ(OFFSET_Y, y, 0.001);
+double x_too_far = OFFSET_X + (L_HAND * 2);
+double angle = calculer_angle(x_too_far, OFFSET_Y);
+TEST_ASSERT(angle >= MIN_ANGLE && angle <= MAX_ANGLE);

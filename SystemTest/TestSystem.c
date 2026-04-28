@@ -92,4 +92,12 @@ move_point_snapshot(5, -10);
 double x2 = get_current_x();
 double y2 = get_current_y();
 TEST_ASSERT_DOUBLE_EQ(OFFSET_X + 15, x2, 0.001);
-TEST_ASSERT_DOUBLE_EQ(OFFSET_Y + 10, y2, 0.001); 
+TEST_ASSERT_DOUBLE_EQ(OFFSET_Y + 10, y2, 0.001);
+set_coordinates_snapshot(OFFSET_X, OFFSET_Y);
+double old_x = get_current_x();
+double old_y = get_current_y();
+BridgeSnapshot snapshot = generate_random_snapshot();
+if (snapshot.err_hand == OK) {
+    TEST_ASSERT(fabs(get_current_x() - old_x) > 0.001 ||
+        fabs(get_current_y() - old_y) > 0.001);
+}

@@ -112,3 +112,10 @@ TEST_ASSERT_DOUBLE_EQ(OFFSET_Y, y, 0.001);
 double x_too_far = OFFSET_X + (L_HAND * 2);
 double angle = calculer_angle(x_too_far, OFFSET_Y);
 TEST_ASSERT(angle >= MIN_ANGLE && angle <= MAX_ANGLE);
+initialize_bridge();
+clear_all_data_no_prompt();
+for (int i = 0; i < 1000; i++) {
+    BridgeSnapshot snap = generate_random_snapshot();
+    (void)snap;
+}
+TEST_ASSERT(get_record_count() == 1000);

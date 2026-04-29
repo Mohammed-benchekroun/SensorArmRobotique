@@ -1,5 +1,5 @@
 // Jira Task: [Ticket SCRUM-29] - Test C module independently ( Unit Testing)
-// https://usmba-team-j15yjeh5.atlassian.net/browse/SCRUM-29
+// https://usmba-team-j15yjeh5.atlassian.net/browse/SCRUM-29 
 #define _CRT_SECURE_NO_WARNINGS
 #include <stdio.h>
 #include <math.h>

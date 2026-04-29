@@ -1,4 +1,5 @@
-package sensor;
+package roboticam;
+
 import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;

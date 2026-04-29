@@ -1,5 +1,3 @@
-package sensor;
-
 package roboticam;
 
 import java.text.SimpleDateFormat;
